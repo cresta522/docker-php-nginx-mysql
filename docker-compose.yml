@@ -1,0 +1,55 @@
+version: '3.8'
+services:
+  app:
+    container_name: app
+    build: ./docker/app/
+    volumes:
+      # src
+      - ./src:/src
+      - ./docker/app/php.ini:/usr/local/etc/php/php.ini
+
+    environment:
+      - VIRTUAL_HOST=kimochi.local
+      - LETSENCRYPT_HOST=kimochi.local
+      - LETSENCRYPT_EMAIL=info@kimochi.local
+      - LETSENCRYPT_SUBJECT="/C=JP/ST=Tokyo/L=Tokyo/CN=default"
+      - DB_CONNECTION=mysql
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_NAME}
+      - DB_USERNAME=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+    restart: always
+
+  web:
+    container_name: web
+    build: ./docker/web
+    volumes:
+      # src
+      - ./src:/src
+      - ./docker/web/conf.d:/etc/nginx/conf.d
+      - ./docker/web/log:/var/log/nginx/
+    ports:
+      - ${WEB_PORT}:80
+    depends_on:
+      - app
+
+  db:
+    container_name: db
+    build:
+      context: .
+      dockerfile: ./docker/db/Dockerfile
+    ports:
+      - ${DB_PORT}:3306
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      TZ: 'Asia/Tokyo'
+    volumes:
+      - mysql-volume:/var/lib/mysql
+      - ./docker/db/my.cnf:/etc/my.cnf
+
+volumes:
+  mysql-volume:
